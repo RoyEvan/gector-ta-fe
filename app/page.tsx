@@ -51,7 +51,7 @@ type SavedCorrection = {
   data?: SentenceGECResult[]
 }
 
-const backendBaseUrl = process.env.TA_GECTAGGING_BACKEND_URL
+const backendBaseUrl = process.env.SKRIPSI_GECTAGGING_BACKEND_URL
 
 export default function GrammarChecker() {
   const { data: session, status } = useSession()
