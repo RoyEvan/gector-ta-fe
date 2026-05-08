@@ -5,12 +5,12 @@ const handler = NextAuth({
   // Configure one or more authentication providers
   providers: [
     GoogleProvider({
-      clientId: process.env.GECTAGGING_GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GECTAGGING_GOOGLE_CLIENT_SECRET!,
+      clientId: process.env.TA_GECTAGGING_GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.TA_GECTAGGING_GOOGLE_CLIENT_SECRET!,
       id: "google",
     }),
   ],
-  secret: process.env.NEXTAUTH_SECRET,
+  secret: process.env.TA_GECTAGGING_NEXTAUTH_SECRET,
   session: {
     maxAge: 60 * 60, // 1 hour
     strategy: 'jwt',
@@ -25,7 +25,7 @@ const handler = NextAuth({
     },
     async jwt ({ token, user, account }) {
       if(user) {
-        const backendUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL
+        const backendUrl = process.env.TA_GECTAGGING_BACKEND_URL
         if (backendUrl) {
           try {
             const req = await fetch(`${backendUrl}/api/signin`, {

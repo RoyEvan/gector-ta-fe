@@ -51,7 +51,7 @@ type SavedCorrection = {
   data?: SentenceGECResult[]
 }
 
-const backendBaseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000/api"
+const backendBaseUrl = process.env.TA_GECTAGGING_BACKEND_URL
 
 export default function GrammarChecker() {
   const { data: session, status } = useSession()
