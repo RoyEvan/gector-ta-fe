@@ -51,7 +51,7 @@ type SavedCorrection = {
   data?: SentenceGECResult[]
 }
 
-const backendBaseUrl = process.env.SKRIPSI_GECTAGGING_BACKEND_URL
+const backendBaseUrl = "http://localhost:8000/api";
 
 export default function GrammarChecker() {
   const { data: session, status } = useSession()
@@ -84,6 +84,8 @@ export default function GrammarChecker() {
   const sentenceCount = groupedResults.length
   const isLoggedIn = status === "authenticated"
 
+  console.log(backendBaseUrl);
+  
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     setFileError("")
@@ -289,7 +291,7 @@ export default function GrammarChecker() {
     setCorrectedText(correctedTextValue)
     const savedData = item.data || []
     const savedIds = savedData.length ? savedData.map((entry) => entry.correction_id) : item.correction_id ? [item.correction_id] : []
-    setGroupedResults(savedData)
+    setGroupedResults([savedCorrections[index]])
     setCorrectionId(savedIds)
     setErrorExplanations(item.data && item.data.length === 1 ? item.data[0].correction_details || [] : [])
   }
@@ -303,7 +305,7 @@ export default function GrammarChecker() {
     setCorrectedText(correctedTextValue)
     const historyData = item.data || []
     const historyIds = historyData.length ? historyData.map((entry) => entry.correction_id) : item.correction_id ? [item.correction_id] : []
-    setGroupedResults(historyData)
+    setGroupedResults([historyCorrections[index]])
     setCorrectionId(historyIds)
     setErrorExplanations(item.data && item.data.length === 1 ? item.data[0].correction_details || [] : [])
   }
