@@ -8,14 +8,9 @@ import {
 } from "@/components/ui/navigation-menu"
 import { Button } from "./ui/button"
 import { signIn, signOut, useSession } from "next-auth/react"
-import { useEffect } from "react"
 
 export function NavBar() {
   const { data: session, status } = useSession();
-
-  useEffect(() => {
-    console.log("Session data:", session);
-  }, [session]);
 
   const handleLogin = async () => {
     try {
