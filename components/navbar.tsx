@@ -14,10 +14,7 @@ export function NavBar() {
 
   const handleLogin = async () => {
     try {
-      const result = await signIn("google");
-      if (!result?.ok) {
-        throw new Error("Login failed");
-      }
+      await signIn("google");
     }
     catch (error) {
       console.error(error);

@@ -57,30 +57,6 @@ const handler = NextAuth({
       if(user) {
         token.user_id = user.user_id
         token.username = user.username
-
-        // how do I get the token value in page.tsx? I want to output the username in the token in the navbar
-
-
-        
-        // if (backendUrl) {
-        //   try {
-        //     const req = await fetch(`${backendUrl}/signin`, {
-        //       method: "POST",
-        //       headers: {
-        //         "Content-Type": "application/json",
-        //       },
-        //       body: JSON.stringify({ email: user.email }),
-        //     })
-
-        //     if (req.ok) {
-        //       const res = await req.json()
-        //       const data = res.data
-        //       token.user_id = data.user_id
-        //     }
-        //   } catch (error) {
-        //     console.error("Backend signin fetch failed", error)
-        //   }
-        // }
       }
 
       return token;
