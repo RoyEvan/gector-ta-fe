@@ -33,6 +33,7 @@ const handler = NextAuth({
       const signInRes = await signInReq.json()
       
       user.user_id = signInRes.data?.user_id;
+      user.username = signInRes.data?.username;
 
       if(!signInRes.data) {
         const signUpReq = await fetch(`${backendUrl}/signup`, {
@@ -47,6 +48,7 @@ const handler = NextAuth({
         })
         const signUpRes = await signUpReq.json()
         user.user_id = signUpRes.data?.user_id;
+        user.username = signUpRes.data?.username;
       }
 
       return true;
@@ -54,6 +56,11 @@ const handler = NextAuth({
     async jwt ({ token, user, account }) {
       if(user) {
         token.user_id = user.user_id
+        token.username = user.username
+
+        // how do I get the token value in page.tsx? I want to output the username in the token in the navbar
+
+
         
         // if (backendUrl) {
         //   try {
@@ -80,6 +87,7 @@ const handler = NextAuth({
     },
     async session({ session, token, user}) {
       session.user!.user_id = token.user_id;
+      session.user!.username = token.username;
       
       return session;
     }

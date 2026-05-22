@@ -35,8 +35,11 @@ export function NavBar() {
 
   const navMenuItem = status === "authenticated" ? (
     <>
+      <NavigationMenuLink asChild className={navigationMenuTriggerStyle()}>
+        <Button variant="outline">Logged in as {session?.user?.username}</Button>
+      </NavigationMenuLink>
       <NavigationMenuLink asChild className={navigationMenuTriggerStyle()} >
-        <Button variant="outline" onClick={handleSignOut}>{session?.user?.user_id}</Button>
+        <Button variant="outline" onClick={handleSignOut}>Log out</Button>
       </NavigationMenuLink>
     </>
   ) : (
