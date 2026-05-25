@@ -72,6 +72,8 @@ export default function GrammarChecker() {
   const [historyStatus, setHistoryStatus] = useState<"idle" | "loading" | "success" | "error">("idle")
   const [historyMessage, setHistoryMessage] = useState("")
   const [selectedHistoryIndex, setSelectedHistoryIndex] = useState<number | null>(null)
+  const [showVoiceAnalysis, setShowVoiceAnalysis] = useState(true)
+  const [showErrorExplanation, setShowErrorExplanation] = useState(true)
   const [showSavedSection, setShowSavedSection] = useState(true)
   const [showHistorySection, setShowHistorySection] = useState(true)
 
@@ -480,10 +482,96 @@ export default function GrammarChecker() {
                   </div>
                 </div>
 
+                {(errorExplanations.length > 0 || groupedResults.length > 0) && (
+                  <div className="space-y-4">
+                    <div className="flex flex-wrap items-start gap-2">
+                      <Label className="text-base font-medium">Error Explanations</Label>
+                      <Button variant="ghost" onClick={() => setShowErrorExplanation((prev) => !prev)}>
+                        {showErrorExplanation ? "Hide" : "Show"}
+                      </Button>
+                    </div>
+                    <div className={(showErrorExplanation ? "space-y-4" : "hidden")}>
+                      {groupedResults.map((g, idx) => (
+                        <Card key={idx} className={(g.correction_details.length > 0) ? "bg-amber-50 border-amber-200" : "bg-green-50 border-green-200"}>
+                          <CardContent className="p-4 space-y-3">
+                            <div className="flex items-center justify-between">
+                              <p className="text-sm text-gray-600">Sentence {idx + 1}</p>
+                              {(g.correction_details.length > 0 && 
+                                <span className="text-xs text-amber-800 bg-amber-100 px-2 py-1 rounded-full">
+                                  {g.correction_details.length} correction{g.correction_details.length === 1 ? "" : "s"}
+                                </span>
+                              )}
+                            </div>
+                            <div className="rounded-md border bg-white p-3">
+                              <p className="text-sm text-gray-500 mb-1 font-medium">Original sentence</p>
+                              <p className="text-gray-900">{g.orig_sentence}</p>
+                            </div>
+                            {(g.correction_details.length > 0 && 
+                              <div className="rounded-md border bg-white p-3">
+                                <p className="text-sm text-gray-500 mb-1 font-medium">Corrected sentence</p>
+                                <p className="text-gray-900">{g.corr_sentence}</p>
+                              </div>
+                            )}
+
+                            {g.correction_details.length > 0 ? (
+                              <div className="space-y-3">
+                                {g.correction_details.map((err, detailIndex) => (
+                                  <div key={detailIndex} className="border-l-4 border-amber-400 pl-4 py-2">
+                                    <div className="flex items-start gap-3">
+                                      <div className="bg-amber-100 text-amber-800 text-xs font-medium px-2 py-1 rounded-full">
+                                        {err.error_type}
+                                      </div>
+                                      <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-1">
+                                          <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-sm font-mono">
+                                            {g.orig_sentence
+                                              .split(" ")
+                                              .slice(
+                                                err.orig_start > 0 && err.orig_start === err.orig_end
+                                                  ? err.orig_start - 1
+                                                  : err.orig_start,
+                                                err.orig_start === err.orig_end ? err.orig_end + 1 : err.orig_end,
+                                              )
+                                              .join(" ")}
+                                          </span>
+                                          <span className="text-gray-500">→</span>
+                                          <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-sm font-mono">
+                                            {g.corr_sentence
+                                              .split(" ")
+                                              .slice(
+                                                err.corr_start > 0 && err.corr_start === err.corr_end
+                                                  ? err.corr_start - 1
+                                                  : err.corr_start,
+                                                err.corr_start === err.corr_end ? err.corr_end + 1 : err.corr_end,
+                                              )
+                                              .join(" ")}
+                                          </span>
+                                        </div>
+                                        <p className="text-sm text-gray-700">{err.explanation}</p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-sm text-gray-600 italic">Your sentence is correct.</p>
+                            )}
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
                 {correctedText && (
                   <div className="space-y-4">
-                    <Label className="text-base font-medium">Voice Analysis</Label>
-                    <div className="space-y-4">
+                    <div className="flex flex-wrap items-start gap-2">
+                      <Label className="text-base font-medium">Voice Analysis</Label>
+                      <Button variant="ghost" onClick={() => setShowVoiceAnalysis((prev) => !prev)}>
+                        {showVoiceAnalysis ? "Hide" : "Show"}
+                      </Button>
+                    </div>
+                    <div className={(showVoiceAnalysis ? "space-y-4" : "hidden")}>
                       {groupedVoice.map((g) => (
                         <Card key={g.index} className="bg-purple-50 border-purple-200">
                           <CardContent className="p-4 space-y-3">
@@ -548,77 +636,7 @@ export default function GrammarChecker() {
                   </div>
                 )}
 
-                {(errorExplanations.length > 0 || groupedResults.length > 0) && (
-                  <div className="space-y-4">
-                    <Label className="text-base font-medium">Error Explanations</Label>
-                    <div className="space-y-4">
-                      {groupedResults.map((g, idx) => (
-                        <Card key={idx} className="bg-amber-50 border-amber-200">
-                          <CardContent className="p-4 space-y-3">
-                            <div className="flex items-center justify-between">
-                              <p className="text-sm text-gray-600">Sentence {idx + 1}</p>
-                              <span className="text-xs text-amber-800 bg-amber-100 px-2 py-1 rounded-full">
-                                {g.correction_details.length} correction{g.correction_details.length === 1 ? "" : "s"}
-                              </span>
-                            </div>
-                            <div className="rounded-md border bg-white p-3">
-                              <p className="text-sm text-gray-500 mb-1 font-medium">Original sentence</p>
-                              <p className="text-gray-900">{g.orig_sentence}</p>
-                            </div>
-                            <div className="rounded-md border bg-white p-3">
-                              <p className="text-sm text-gray-500 mb-1 font-medium">Corrected sentence</p>
-                              <p className="text-gray-900">{g.corr_sentence}</p>
-                            </div>
-
-                            {g.correction_details.length > 0 ? (
-                              <div className="space-y-3">
-                                {g.correction_details.map((err, detailIndex) => (
-                                  <div key={detailIndex} className="border-l-4 border-amber-400 pl-4 py-2">
-                                    <div className="flex items-start gap-3">
-                                      <div className="bg-amber-100 text-amber-800 text-xs font-medium px-2 py-1 rounded-full">
-                                        {err.error_type}
-                                      </div>
-                                      <div className="flex-1">
-                                        <div className="flex items-center gap-2 mb-1">
-                                          <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-sm font-mono">
-                                            {g.orig_sentence
-                                              .split(" ")
-                                              .slice(
-                                                err.orig_start > 0 && err.orig_start === err.orig_end
-                                                  ? err.orig_start - 1
-                                                  : err.orig_start,
-                                                err.orig_start === err.orig_end ? err.orig_end + 1 : err.orig_end,
-                                              )
-                                              .join(" ")}
-                                          </span>
-                                          <span className="text-gray-500">→</span>
-                                          <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-sm font-mono">
-                                            {g.corr_sentence
-                                              .split(" ")
-                                              .slice(
-                                                err.corr_start > 0 && err.corr_start === err.corr_end
-                                                  ? err.corr_start - 1
-                                                  : err.corr_start,
-                                                err.corr_start === err.corr_end ? err.corr_end + 1 : err.corr_end,
-                                              )
-                                              .join(" ")}
-                                          </span>
-                                        </div>
-                                        <p className="text-sm text-gray-700">{err.explanation}</p>
-                                      </div>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <p className="text-sm text-gray-600 italic">Your sentence is correct.</p>
-                            )}
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                
 
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <h3 className="font-medium text-blue-900 mb-2">How it works:</h3>
@@ -631,9 +649,8 @@ export default function GrammarChecker() {
                 </div>
               </CardContent>
             </Card>
-
             {isLoggedIn && (
-            <aside className="space-y-6">
+            <aside className="space-y-6 w-full">
               <div className="space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <Label className="text-base font-medium">Saved</Label>
