@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -23,32 +23,21 @@ type GECErrorDetail = {
 }
 
 type SentenceGECResult = {
-  correction_id: string
+  id: string
   orig_sentence: string
   corr_sentence: string
   voice_type: "active" | "passive"
+  is_saved: boolean
   voice_analysis: string
   correction_details: GECErrorDetail[]
 }
 
-type CorrectionResult = {
+type ResponseResult = {
   status: {
     code: number
     message: string
   }
   data: SentenceGECResult[]
-}
-
-type SavedCorrection = {
-  correction_id?: string
-  original?: string
-  corrected?: string
-  orig_text?: string
-  corr_text?: string
-  orig_sentence?: string
-  corr_sentence?: string
-  created_at?: string
-  data?: SentenceGECResult[]
 }
 
 const backendBaseUrl = process.env.NEXT_PUBLIC_SKRIPSI_GECTAGGING_BACKEND_URL;
@@ -62,29 +51,31 @@ export default function GrammarChecker() {
   const [fileName, setFileName] = useState<string>("")
   const [fileError, setFileError] = useState<string>("")
   const [correctionId, setCorrectionId] = useState<string[]>([])
-  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "success" | "error">("idle")
   const [saveMessage, setSaveMessage] = useState("")
-  const [savedCorrections, setSavedCorrections] = useState<SavedCorrection[]>([])
+  const [savedCorrections, setSavedCorrections] = useState<SentenceGECResult[]>([])
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "success" | "error">("idle")
   const [savedStatus, setSavedStatus] = useState<"idle" | "loading" | "success" | "error">("idle")
+  const [historyStatus, setHistoryStatus] = useState<"idle" | "loading" | "success" | "error">("idle")
   const [savedMessage, setSavedMessage] = useState("")
   const [selectedSavedIndex, setSelectedSavedIndex] = useState<number | null>(null)
-  const [historyCorrections, setHistoryCorrections] = useState<SavedCorrection[]>([])
-  const [historyStatus, setHistoryStatus] = useState<"idle" | "loading" | "success" | "error">("idle")
+  const [historyCorrections, setHistoryCorrections] = useState<SentenceGECResult[]>([])
   const [historyMessage, setHistoryMessage] = useState("")
   const [selectedHistoryIndex, setSelectedHistoryIndex] = useState<number | null>(null)
-  const [showVoiceAnalysis, setShowVoiceAnalysis] = useState(true)
-  const [showErrorExplanation, setShowErrorExplanation] = useState(true)
   const [showSavedSection, setShowSavedSection] = useState(true)
   const [showHistorySection, setShowHistorySection] = useState(true)
-
-  // For single-sentence display (back-compat with earlier UI)
-  const [errorExplanations, setErrorExplanations] = useState<GECErrorDetail[]>([])
-
+  const [showErrorExplanation, setShowErrorExplanation] = useState(true)
+  const [showVoiceAnalysis, setShowVoiceAnalysis] = useState(true)
+  
   // Grouped results by sentence
   const [groupedResults, setGroupedResults] = useState<SentenceGECResult[]>([])
 
-  const sentenceCount = groupedResults.length
   const isLoggedIn = status === "authenticated"
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      clearAll()
+    }
+  }, [status])
   
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -139,62 +130,32 @@ export default function GrammarChecker() {
 
     const sentences = splitIntoSentences(trimmed)
     const rawSentences = sentences.map((s) => s.trim())
-    const correctionResults: CorrectionResult | null = await fetch(`${backendBaseUrl}/correct`, {
+    const request = await fetch(`${backendBaseUrl}/correct`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ sentences: rawSentences, iteration_count: 3, user_id: session?.user?.user_id }),
     })
-      .then((res) => res.json())
-      .catch(() => null)
+    const response: ResponseResult = await request.json()
 
-    const correctionData = correctionResults?.data || []
+    const correctionData = response.data || []
     setGroupedResults(correctionData)
-    setCorrectionId(correctionData.map(({ correction_id }) => correction_id))
+    setCorrectionId(correctionData.map(({ id }) => id))
     setSaveStatus("idle")
     setSaveMessage("")
-
     const combined = correctionData.map((r) => r.corr_sentence).join(" ")
     setCorrectedText(combined)
-
-    if (correctionData.length === 1) {
-      setErrorExplanations(correctionData[0].correction_details || [])
-    } else {
-      setErrorExplanations([])
-    }
-
     setIsProcessing(false)
   }
 
   const clearAll = () => {
     setInputText("")
     setCorrectedText("")
-    setErrorExplanations([])
     setGroupedResults([])
     setFileError("")
     setFileName("")
     setCorrectionId([])
     setSaveStatus("idle")
     setSaveMessage("")
-  }
-
-  const resolveSavedText = (item: SavedCorrection, kind: "original" | "corrected") => {
-    if (kind === "original") {
-      return (
-        item.original ||
-        item.orig_text ||
-        item.orig_sentence ||
-        item.data?.map((entry) => entry.orig_sentence).join(" ") ||
-        ""
-      )
-    }
-
-    return (
-      item.corrected ||
-      item.corr_text ||
-      item.corr_sentence ||
-      item.data?.map((entry) => entry.corr_sentence).join(" ") ||
-      ""
-    )
   }
 
   const handleViewSavedCorrections = async () => {
@@ -208,34 +169,26 @@ export default function GrammarChecker() {
     try {
       setSavedStatus("loading")
       setSavedMessage("")
-      const response = await fetch(`${backendBaseUrl}/saved`, {
+      const request = await fetch(`${backendBaseUrl}/saved`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: userId }),
       })
-      const data = await response.json().catch(() => null)
-      if (!response.ok) {
-        const backendMessage = data?.message || "Failed to fetch saved corrections."
-        throw new Error(backendMessage)
+      const response: ResponseResult = await request.json()
+      
+      if (response.status.code !== 200) {
+        throw new Error("Failed to fetch saved corrections.")
       }
-
-      const savedData = Array.isArray(data)
-        ? data
-        : Array.isArray(data?.data)
-        ? data.data
-        : Array.isArray(data?.saved)
-        ? data.saved
-        : []
-
-      setSavedCorrections(savedData)
+      
+      setSavedCorrections(response.data)
       setSelectedSavedIndex(null)
       setSavedStatus("success")
-      if (savedData.length === 0) {
+      if (response.data.length === 0) {
         setSavedMessage("No saved corrections found.")
       }
     } catch (error) {
       setSavedStatus("error")
-      setSavedMessage(error instanceof Error ? error.message : "Failed to fetch saved corrections.")
+      setSavedMessage("Failed to fetch saved corrections.")
     }
   }
 
@@ -250,63 +203,45 @@ export default function GrammarChecker() {
     try {
       setHistoryStatus("loading")
       setHistoryMessage("")
-      const response = await fetch(`${backendBaseUrl}/history`, {
+      const request = await fetch(`${backendBaseUrl}/history`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: userId }),
       })
-      const data = await response.json().catch(() => null)
-      if (!response.ok) {
-        const backendMessage = data?.message || "Failed to fetch history."
-        throw new Error(backendMessage)
+      const response = await request.json()
+      if (response.status.code !== 200) {
+        throw new Error("Failed to fetch history.")
       }
 
-      const historyData = Array.isArray(data)
-        ? data
-        : Array.isArray(data?.data)
-        ? data.data
-        : Array.isArray(data?.history)
-        ? data.history
-        : []
-
-      setHistoryCorrections(historyData)
+      setHistoryCorrections(response.data)
       setSelectedHistoryIndex(null)
       setHistoryStatus("success")
-      if (historyData.length === 0) {
+      if (response.data.length === 0) {
         setHistoryMessage("No history found.")
       }
     } catch (error) {
       setHistoryStatus("error")
-      setHistoryMessage(error instanceof Error ? error.message : "Failed to fetch history.")
+      setHistoryMessage("Failed to fetch history.")
     }
   }
 
-  const handleSelectSavedCorrection = (item: SavedCorrection, index: number) => {
-    const originalText = resolveSavedText(item, "original")
-    const correctedTextValue = resolveSavedText(item, "corrected")
-
+  const handleSelectSavedCorrection = (index: number) => {
     setSelectedSavedIndex(index)
-    setInputText(originalText)
-    setCorrectedText(correctedTextValue)
-    const savedData = item.data || []
-    const savedIds = savedData.length ? savedData.map((entry) => entry.correction_id) : item.correction_id ? [item.correction_id] : []
-    setGroupedResults([savedCorrections[index]])
-    setCorrectionId(savedIds)
-    setErrorExplanations(item.data && item.data.length === 1 ? item.data[0].correction_details || [] : [])
+    setSelectedHistoryIndex(null)
+    handleSelectCorrection(savedCorrections, index)
   }
   
-  const handleSelectHistoryCorrection = (item: SavedCorrection, index: number) => {
-    const originalText = resolveSavedText(item, "original")
-    const correctedTextValue = resolveSavedText(item, "corrected")
-    
+  const handleSelectHistoryCorrection = (index: number) => {
     setSelectedHistoryIndex(index)
-    setInputText(originalText)
-    setCorrectedText(correctedTextValue)
-    const historyData = item.data || []
-    const historyIds = historyData.length ? historyData.map((entry) => entry.correction_id) : item.correction_id ? [item.correction_id] : []
-    setGroupedResults([historyCorrections[index]])
-    setCorrectionId(historyIds)
-    setErrorExplanations(item.data && item.data.length === 1 ? item.data[0].correction_details || [] : [])
+    setSelectedSavedIndex(null)
+    handleSelectCorrection(historyCorrections, index)
+  }
+
+  const handleSelectCorrection = (corrections: SentenceGECResult[], index: number) => {
+    setInputText(corrections[index].orig_sentence)
+    setCorrectedText(corrections[index].corr_sentence)
+    setGroupedResults([corrections[index]])
+    setCorrectionId([corrections[index].id])
   }
 
   const handleSaveCorrection = async () => {
@@ -324,16 +259,15 @@ export default function GrammarChecker() {
 
     try {
       setSaveStatus("saving")
-      setSaveMessage("")
-      const response = await fetch(`${backendBaseUrl}/save`, {
+      setSaveMessage("")      
+      const request = await fetch(`${backendBaseUrl}/save`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: userId, correction_id: correctionId }),
       })
-      const data = await response.json().catch(() => null)
-      if (!response.ok) {
-        const backendMessage = data?.message || "Failed to save correction."
-        throw new Error(backendMessage)
+      const response = await request.json()
+      if (response.status.code !== 200) {
+        throw new Error("Failed to save correction.")
       }
       setSaveStatus("success")
       setSaveMessage("Correction saved.")
@@ -460,9 +394,9 @@ export default function GrammarChecker() {
                         </div>
                         {isLoggedIn && (
                           <Button
-                            variant="secondary"
+                            variant={"secondary"}
                             onClick={handleSaveCorrection}
-                            disabled={saveStatus === "saving" || status === "loading"}
+                            disabled={saveStatus === "saving"}
                             className="sm:flex-1"
                           >
                             {saveStatus === "saving" ? "Saving..." : "Save Correction"}
@@ -482,7 +416,7 @@ export default function GrammarChecker() {
                   </div>
                 </div>
 
-                {(errorExplanations.length > 0 || groupedResults.length > 0) && (
+                {(groupedResults.length > 0) && (
                   <div className="space-y-4">
                     <div className="flex flex-wrap items-start gap-2">
                       <Label className="text-base font-medium">Error Explanations</Label>
@@ -678,14 +612,14 @@ export default function GrammarChecker() {
                   <div className="space-y-3">
                     <div className="space-y-2">
                       {savedCorrections.map((item, idx) => {
-                        const previewText = resolveSavedText(item, "corrected") || resolveSavedText(item, "original")
+                        const previewText = item.corr_sentence
                         const isSelected = selectedSavedIndex === idx
 
                         return (
                           <button
-                            key={`${item.correction_id ?? "saved"}-${idx}`}
+                            key={`${item.id ?? "saved"}-${idx}`}
                             type="button"
-                            onClick={() => handleSelectSavedCorrection(item, idx)}
+                            onClick={() => handleSelectSavedCorrection(idx)}
                             className={`w-full rounded-md border px-3 py-2 text-left text-sm transition-colors ${
                               isSelected
                                 ? "border-indigo-400 bg-indigo-50 text-indigo-900"
@@ -694,8 +628,8 @@ export default function GrammarChecker() {
                           >
                             <div className="flex items-center justify-between gap-2">
                               <span className="font-medium">Saved #{idx + 1}</span>
-                              {item.correction_id && (
-                                <span className="text-xs text-slate-500">{String(item.correction_id)}</span>
+                              {item.id && (
+                                <span className="text-xs text-slate-500">{String(item.id)}</span>
                               )}
                             </div>
                             <p className="mt-1 line-clamp-2 text-xs text-slate-600">
@@ -719,7 +653,7 @@ export default function GrammarChecker() {
                     <Button
                       variant="outline"
                       onClick={handleViewHistory}
-                      disabled={historyStatus === "loading" || status === "loading"}
+                      disabled={historyStatus === "loading" || status === "unauthenticated"}
                     >
                       {historyStatus === "loading" ? "Loading..." : "View"}
                     </Button>
@@ -740,9 +674,9 @@ export default function GrammarChecker() {
 
                         return (
                           <button
-                            key={`${item.correction_id ?? "history"}-${idx}`}
+                            key={`${item.id ?? "history"}-${idx}`}
                             type="button"
-                            onClick={() => handleSelectHistoryCorrection(item, idx)}
+                            onClick={() => handleSelectHistoryCorrection(idx)}
                             className={`w-full rounded-md border px-3 py-2 text-left text-sm transition-colors ${
                               isSelected
                                 ? "border-emerald-400 bg-emerald-50 text-emerald-900"
@@ -750,10 +684,10 @@ export default function GrammarChecker() {
                             }`}
                           >
                             <div className="flex items-center justify-between gap-2">
-                              <span className="font-medium">{resolveSavedText(item, "original")}</span>
+                              <span className="font-medium">{item.orig_sentence}</span>
                             </div>
                             <p className="mt-1 line-clamp-2 text-xs text-slate-600">
-                              {resolveSavedText(item, "corrected")}
+                              {item.corr_sentence}
                             </p>
                           </button>
                         )
