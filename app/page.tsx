@@ -628,9 +628,6 @@ export default function GrammarChecker() {
                           >
                             <div className="flex items-center justify-between gap-2">
                               <span className="font-medium">Saved #{idx + 1}</span>
-                              {item.id && (
-                                <span className="text-xs text-slate-500">{String(item.id)}</span>
-                              )}
                             </div>
                             <p className="mt-1 line-clamp-2 text-xs text-slate-600">
                               {previewText || "No preview available."}
