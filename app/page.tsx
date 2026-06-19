@@ -11,6 +11,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { CheckCircle } from "lucide-react"
 import { NavBar } from "@/components/navbar"
+import Image from "next/image"
+import gramyxLogo from "@/assets/images/gramyx.png"
 
 type GECErrorDetail = {
   error_type: string
@@ -293,10 +295,13 @@ export default function GrammarChecker() {
       <NavBar />
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
         <div className="container mx-auto max-w-full">
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">Tugas Akhir</h1>
+          <div className="flex justify-center mb-6">
+            {/* <h1 className="text-4xl font-bold text-gray-900 mb-2">Tugas Akhir</h1>
             <p className="text-xl text-gray-600">SISTEM GRAMMATICAL ERROR CORRECTION BAHASA INGGRIS</p>
-            <p className="text-md text-gray-600">BAGI PELAJAR ESL DENGAN PENDEKATAN SEQUENCE TAGGING DAN FINE-TUNING</p>
+            <p className="text-md text-gray-600">BAGI PELAJAR ESL DENGAN PENDEKATAN SEQUENCE TAGGING DAN FINE-TUNING</p> */}
+            {/* <div className="flex justify-center"> */}
+              <Image src={gramyxLogo} alt="Gramyx Logo" width={300} height={100} className="object-contain" priority />
+            {/* </div> */}
           </div>
 
           <div className="grid lg:grid-cols-[minmax(0,1fr)_320px] gap-6 items-start">
